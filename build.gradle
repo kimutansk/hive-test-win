@@ -1,0 +1,97 @@
+plugins {
+    id 'java'
+    id 'idea'
+    id 'maven'
+    id 'net.researchgate.release' version '2.3.5'
+    id 'checkstyle'
+    id 'findbugs'
+    id 'pmd'
+    id 'jacoco'
+}
+
+group = 'com.github.kimutansk'
+description = """"""
+
+def defaultEncoding = 'UTF-8'
+[compileJava, compileTestJava]*.options*.encoding = defaultEncoding
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.mockito:mockito-all:1.10.19'
+    testCompile 'com.klarna:hiverunner:3.0.0'
+}
+
+// Check Style Setting
+checkstyle {
+    ignoreFailures = true
+    configFile = file('./dev/checkstyle/checkstyle.xml')
+}
+
+checkstyleTest {
+    excludes = ['**/*']
+}
+
+// FindBugs setting
+findbugs {
+    ignoreFailures = true
+}
+
+findbugsTest {
+    excludes = ['**/*']
+}
+
+// pmd cpd
+pmd {
+    ignoreFailures = true
+    sourceSets = [sourceSets.main]
+    reportsDir = file("$project.buildDir/reports/pmd")
+}
+
+check << {
+    File outDir = new File('build/reports/pmd/')
+    outDir.mkdirs()
+    ant.taskdef(name: 'cpd', classname: 'net.sourceforge.pmd.cpd.CPDTask',
+            classpath: configurations.pmd.asPath)
+    ant.cpd(minimumTokenCount: '100', format: 'xml',
+            outputFile: new File(outDir, 'cpd.xml')) {
+        fileset(dir: "src/main/java") {
+            include(name: '**/*.java')
+        }
+    }
+}
+
+// jacoco
+jacoco {
+    toolVersion = "0.7.5.201505241946"
+    reportsDir = file("$buildDir/reports/jacoco")
+}
+
+task jacoco(type: JacocoReport, dependsOn: 'test') {
+    reports {
+        html.enabled = true
+        xml.enabled = true
+    }
+
+    sourceSets sourceSets.main
+    executionData = files('build/jacoco/test.exec')
+}
+
+check.dependsOn "jacoco"
+
+javadoc {
+    options.encoding = "UTF-8"
+}
+
+// zip sources
+task sourceJar(type: Jar) {
+    from sourceSets.main.allJava
+}
+// zip javadocs
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    from javadoc.destinationDir
+}
+
